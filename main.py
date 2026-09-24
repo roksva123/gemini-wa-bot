@@ -10,6 +10,17 @@ from services.whatsapp import whatsapp_service
 from services.message_handler import message_handler
 
 # =====================================================
+# Development Dependency (placeholder)
+# =====================================================
+
+def require_development():
+    """Placeholder dependency to allow development-only endpoints.
+    Currently a no-op; can be extended to restrict access in production.
+    """
+    return None
+
+
+# =====================================================
 # Konfigurasi Logging
 # =====================================================
 logging.basicConfig(
