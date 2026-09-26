@@ -1,6 +1,19 @@
 import logging
 import json
-from fastapi import FastAPI, Request, Depends, HTTPException, Query
+from pydantic import BaseModel
+
+# ------------------------------------------------------------------
+# Pydantic model used by the development‑only test endpoint
+# ------------------------------------------------------------------
+class TestMessageRequest(BaseModel):
+    """Schema for the /test/send-message endpoint.
+
+    - ``phone_number``: string, e.g. "628123456789"
+    - ``message``: the text to send via WhatsApp
+    """
+    phone_number: str
+    message: str
+
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -8,10 +21,10 @@ from config import settings
 from database import get_db, create_tables, DatabaseService
 from services.whatsapp import whatsapp_service
 from services.message_handler import message_handler
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
+from sqlalchemy.orm import Session
 
-# =====================================================
 # Development Dependency (placeholder)
-# =====================================================
 
 def require_development():
     """Placeholder dependency to allow development-only endpoints.
@@ -20,45 +33,24 @@ def require_development():
     return None
 
 
-# =====================================================
 # Konfigurasi Logging
-# =====================================================
 logging.basicConfig(
     level=settings.normalized_log_level,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
-# =====================================================
 # Inisialisasi FastAPI App
-# =====================================================
 app = FastAPI(
     title=settings.app_name,
     description="Bot WhatsApp berbasis AI Gemini dengan memory percakapan",
-    version="1.0.0"
+    version="1.0.0",
+    # lifespan omitted – optional; FastAPI will use default lifecycle handling
 )
 
-# =====================================================
-# Startup Event
-# =====================================================
-@app.on_event("startup")
-async def startup_event():
-    """Jalankan setup saat aplikasi startup"""
-    logger.info("Aplikasi sedang startup...")
-
-    # Buat tabel database jika belum ada
-    try:
-        create_tables()
-        logger.info("Database tables created successfully")
-    except Exception as e:
-        logger.error(f"Error creating database tables: {str(e)}")
-
-    logger.info(f"Bot WhatsApp AI siap di: http://localhost:{settings.port}")
 
 
-# =====================================================
 # Health Check Endpoint
-# =====================================================
 @app.get("/health", tags=["Health"])
 async def health_check():
     """Endpoint untuk mengecek status aplikasi"""
@@ -69,23 +61,14 @@ async def health_check():
     }
 
 
-# =====================================================
 # WhatsApp Webhook Endpoints
-# =====================================================
 @app.get("/webhook", tags=["Webhook"])
 async def verify_webhook(
     hub_mode: str = Query(None, alias="hub.mode"),
     hub_challenge: str = Query(None, alias="hub.challenge"),
     hub_verify_token: str = Query(None, alias="hub.verify_token"),
 ):
-    """
-    Endpoint untuk verifikasi webhook dari WhatsApp
-
-    WhatsApp akan mengirim GET request dengan:
-    - hub.mode: "subscribe"
-    - hub.challenge: challenge string
-    - hub.verify_token: token untuk verifikasi
-    """
+    """Endpoint untuk verifikasi webhook dari WhatsApp."""
     logger.info("Webhook verification request received")
     safe_token = f"{hub_verify_token[:10]}..." if hub_verify_token else "<missing>"
     logger.info(f"Mode: {hub_mode}, Token: {safe_token}")
@@ -96,7 +79,8 @@ async def verify_webhook(
     # Verifikasi token
     if whatsapp_service.verify_webhook_token(hub_verify_token):
         logger.info("Webhook verified successfully")
-        return hub_challenge
+        # PERBAIKAN DI SINI: Kembalikan Response murni berupa text/plain
+        return Response(content=str(hub_challenge), media_type="text/plain")
 
     logger.error("Invalid webhook token")
     raise HTTPException(status_code=403, detail="Invalid verify token")
@@ -131,7 +115,7 @@ async def handle_webhook(request: Request, db: Session = Depends(get_db)):
     try:
         # Parse request body
         body = await request.json()
-        logger.info(f"Webhook request received: {json.dumps(body, indent=2)[:500]}")
+        logger.info("Webhook request received: %s", json.dumps(body, indent=2))
 
         # Validasi struktur
         if body.get("object") != "whatsapp_business_account":
@@ -231,20 +215,20 @@ async def handle_webhook(request: Request, db: Session = Depends(get_db)):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
-# =====================================================
 # Debug Endpoints (opsional, untuk testing)
-# =====================================================
 @app.post("/test/send-message", dependencies=[Depends(require_development)])
 async def test_send_message(
-    phone_number: str,
-    message: str,
+    request_body: TestMessageRequest,
     db: Session = Depends(get_db)
 ):
     """
-    Endpoint untuk testing pengiriman pesan manual
+    Endpoint untuk testing pengiriman pesan manual (JSON body).
 
     Hanya gunakan untuk development!
     """
+    # Extract data from the Pydantic model
+    phone_number = request_body.phone_number
+    message = request_body.message
     try:
         logger.info(f"Test: Sending message to {phone_number}: {message}")
 
@@ -313,9 +297,7 @@ async def test_get_chat_history(phone_number: str, db: Session = Depends(get_db)
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# =====================================================
 # Custom Response Management Endpoints
-# =====================================================
 @app.get("/custom-response/{phone_number}", tags=["Custom Response"])
 async def get_custom_response(phone_number: str, db: Session = Depends(get_db)):
     """
@@ -423,9 +405,7 @@ async def delete_custom_response(phone_number: str, db: Session = Depends(get_db
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# =====================================================
 # Main Entry Point
-# =====================================================
 if __name__ == "__main__":
     import uvicorn
 

@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     app_name: str = "Gemini WhatsApp Bot"
 
     class Config:
+        extra = "allow"
         env_file = ".env"
         case_sensitive = False
 
