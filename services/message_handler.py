@@ -1,4 +1,5 @@
 import logging
+import random
 import re
 from typing import Optional
 from sqlalchemy.orm import Session
@@ -93,16 +94,24 @@ class MessageHandler:
                 return None
 
             trigger_persona = _detect_triggered_persona(message_text)
-            # Default to the persona associated with the phone number (which may contain a special panggilan)
-            base_persona = USER_PERSONAS.get(phone_number, DEFAULT_PERSONA)
-            # Use the special persona only occasionally (e.g., 30% of the time) unless a trigger explicitly forces it
-            if trigger_persona:
-                persona_instruction = trigger_persona
-            else:
-                if random.random() < 0.3:
-                    persona_instruction = base_persona
+            # If the phone number has a defined persona, use it (occasionally randomize as before).
+            # If not, ask the user what they want (web, bot, plugin, etc.)
+            if phone_number in USER_PERSONAS:
+                base_persona = USER_PERSONAS[phone_number]
+                # Use the special persona only occasionally (e.g., 30% of the time) unless a trigger explicitly forces it
+                if trigger_persona:
+                    persona_instruction = trigger_persona
                 else:
-                    persona_instruction = DEFAULT_PERSONA
+                    if random.random() < 0.3:
+                        persona_instruction = base_persona
+                    else:
+                        persona_instruction = DEFAULT_PERSONA
+            else:
+                # No persona found – ask the user what they want to do
+                persona_instruction = "Saya tidak menemukan profil persona Anda. Apakah Anda ingin membuat website, bot, plugin, atau hal lain? Silakan beri tahu saya pilihan Anda."
+                # Use default persona for the response style
+                # (You could keep DEFAULT_PERSONA as part of system instruction if needed)
+
 
             # 3. SUSUN SYSTEM INSTRUCTION SESUAI PERSONA DARI NOMOR
             system_instruction = (
