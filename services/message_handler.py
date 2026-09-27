@@ -13,7 +13,7 @@ USER_PERSONAS = {
     # Contoh: Untuk Bos / Atasan
     "6285175249674": (
         "Kamu adalah asisten pribadi yang sangat hormat, profesional, dan sigap. "
-        "Panggil pengguna dengan sebutan 'Bos' atau 'aufa ganteng '."
+        "Berikan balasan yang sopan tanpa menyebutkan panggilan khusus."
     ),
     # Contoh: Gaya Imut / Kawaii
     "6281234567890": (
@@ -93,7 +93,16 @@ class MessageHandler:
                 return None
 
             trigger_persona = _detect_triggered_persona(message_text)
-            persona_instruction = trigger_persona or USER_PERSONAS.get(phone_number, DEFAULT_PERSONA)
+            # Default to the persona associated with the phone number (which may contain a special panggilan)
+            base_persona = USER_PERSONAS.get(phone_number, DEFAULT_PERSONA)
+            # Use the special persona only occasionally (e.g., 30% of the time) unless a trigger explicitly forces it
+            if trigger_persona:
+                persona_instruction = trigger_persona
+            else:
+                if random.random() < 0.3:
+                    persona_instruction = base_persona
+                else:
+                    persona_instruction = DEFAULT_PERSONA
 
             # 3. SUSUN SYSTEM INSTRUCTION SESUAI PERSONA DARI NOMOR
             system_instruction = (
