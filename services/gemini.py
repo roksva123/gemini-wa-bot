@@ -1,106 +1,130 @@
 import logging
 from typing import List
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 from config import settings
 
 logger = logging.getLogger(__name__)
 
+SYSTEM_PROMPT = """Kamu adalah asisten AI WhatsApp yang ramah, sopan, dan memberikan jawaban singkat serta jelas.
+- Jawab pertanyaan dengan bahasa Indonesia yang santai namun tetap menghormati pengguna.
+- Hindari jawaban yang terlalu panjang; maksimal 2-3 kalimat.
+- Jika tidak tahu jawabannya, katakan dengan jujur dan tawarkan bantuan lain.
+- Selalu akhiri dengan salam atau ungkapan positif.
+"""
+
 
 class GeminiService:
-    """Service untuk integrasi dengan Google Gemini API"""
-
     def __init__(self):
-        """Inisialisasi Gemini client satu kali"""
-        # Configure API key once
-        genai.configure(api_key=settings.gemini_api_key)
-        # Store model name
-        self.model_name = settings.gemini_model
-        # System instruction can be overridden via env if needed
-        self.system_instruction = getattr(settings, "gemini_system_instruction", """Kamu adalah Asisten Virtual yang ramah, pintar, dan responsif.
-Berikut adalah karakteristikmu:
-- Jawab pertanyaan dengan jelas, ringkas, dan terstruktur
-- Gunakan poin-poin (bullet points) untuk informasi yang kompleks
-- Gunakan **teks tebal** untuk hal-hal penting
-- Hindari jawaban yang terlalu panjang (maksimal 2-3 paragraf atau 5 poin)
-- Jika pertanyaan tidak jelas, tanyakan pertanyaan klarifikasi
-- Selalu ramah dan membantu
-- Jika tidak tahu jawaban, katakan dengan jujur daripada mengada-ada""")
-        # Prepare a reusable GenerativeModel with a fixed GenerationConfig
-        self.generation_config = genai.types.GenerationConfig(
-            temperature=0.7,
-            max_output_tokens=500,
-        )
-        self.model = genai.GenerativeModel(
-            model_name=self.model_name,
-            generation_config=self.generation_config,
+        self.client = genai.Client(api_key=settings.gemini_api_key)
+        self.system_instruction = getattr(
+            settings,
+            "gemini_system_instruction",
+            SYSTEM_PROMPT,
         )
 
-    def format_chat_history(self, chat_history: List[dict]) -> List[dict]:
-        """Format riwayat chat untuk Gemini API"""
-        formatted_history = []
-        for msg in chat_history:
-            formatted_history.append(
-                {
-                    "role": msg["role"],
-                    "parts": [{"text": msg["message"]}],
-                }
-            )
-        return formatted_history
+        # Ambil model utama dari .env
+        raw_primary = getattr(settings, "gemini_model", "gemini-1.5-flash")
+        
+        # Ambil fallback models dari .env
+        raw_fallback = getattr(
+            settings,
+            "mini_fallback_models",
+            "gemini-1.5-pro,gemini-2.0-flash",
+        )
 
-    def _generate_content(self, contents: str):
-        """Generate content menggunakan SDK google-generativeai dengan model yang sudah di‑initialize."""
-        prompt = f"{self.system_instruction}\n\n{contents}"
-        return self.model.generate_content(prompt)
+        # Gabungkan dan format nama model
+        candidates = [raw_primary] + [m.strip() for m in raw_fallback.split(",") if m.strip()]
+        
+        self._fallback_models = []
+        for model in candidates:
+            # Pastikan format bersih tanpa duplikasi 'models/'
+            clean_name = model.replace("models/", "")
+            full_model_name = f"models/{clean_name}"
+            
+            if full_model_name not in self._fallback_models:
+                self._fallback_models.append(full_model_name)
 
-    async def generate_response(self, user_message: str, chat_history: List[dict]) -> str:
-        """Generate respons menggunakan Gemini dengan chat history"""
-        try:
-            response = self._generate_content(user_message)
+        logger.info(f"Loaded Gemini models: {self._fallback_models}")
+    def __init__(self):
+        self.client = genai.Client(api_key=settings.gemini_api_key)
+        self.system_instruction = getattr(
+            settings,
+            "gemini_system_instruction",
+            SYSTEM_PROMPT,
+        )
 
-            # Extract text dari response
-            if response.text:
-                logger.info(
-                    f"Gemini response generated successfully for message: {user_message[:50]}"
-                )
-                return response.text
+        # Parse model dari .env dan pastikan menggunakan awalan 'models/'
+        primary_model = getattr(settings, "gemini_model", "models/gemini-2.0-flash")
+        if not primary_model.startswith("models/"):
+            primary_model = f"models/{primary_model}"
 
-            logger.warning("Empty response from Gemini API")
-            return "Maaf, saya tidak dapat menghasilkan respons saat ini. Silakan coba lagi."
+        fallback_raw = getattr(
+            settings,
+            "mini_fallback_models",
+            "models/gemini-1.5-flash,models/gemini-1.5-pro",
+        )
+        
+        fallback_list = []
+        for m in fallback_raw.split(","):
+            m = m.strip()
+            if m:
+                if not m.startswith("models/"):
+                    m = f"models/{m}"
+                fallback_list.append(m)
 
-        except Exception as e:
-            logger.error(f"Error generating Gemini response: {str(e)}")
-            return f"Terjadi kesalahan saat memproses pertanyaan Anda: {str(e)}"
+        self._fallback_models = [primary_model] + [
+            m for m in fallback_list if m != primary_model
+        ]
+
+    def _build_prompt(self, user_message: str, chat_history: List[dict]) -> str:
+        context = ""
+        if chat_history:
+            context = "Riwayat percakapan sebelumnya:\n"
+            for msg in chat_history[-5:]:
+                role = "Pengguna" if msg["role"] == "user" else "Asisten"
+                context += f"{role}: {msg['message']}\n"
+            context += "\n"
+        return f"{self.system_instruction}\n\n{context}Pengguna: {user_message}\n\nAsisten:"
 
     async def generate_response_with_history(self, user_message: str, chat_history: List[dict]) -> str:
-        """Generate respons dengan memasukkan chat history untuk konteks yang lebih baik"""
-        try:
-            # Format history untuk digunakan sebagai konteks
-            context = ""
-            if chat_history:
-                context = "Riwayat percakapan sebelumnya:\n"
-                for msg in chat_history[-5:]:  # Ambil 5 pesan terakhir
-                    role = "Pengguna" if msg["role"] == "user" else "Asisten"
-                    context += f"{role}: {msg['message']}\n"
-                context += "\n"
+        prompt = self._build_prompt(user_message, chat_history)
 
-            # Gabungkan konteks dengan pesan baru
-            full_message = context + f"Pengguna: {user_message}\n\nAsisten:"
+        for model_name in self._fallback_models:
+            try:
+                logger.info(f"Mencoba model Gemini: {model_name}")
+                response = self.client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        temperature=0.7,
+                        max_output_tokens=500,
+                    ),
+                )
+                if response and response.text:
+                    logger.info(
+                        f"Response berhasil dari model {model_name} untuk pesan: {user_message[:30]}"
+                    )
+                    return response.text.strip()
+            except Exception as exc:
+                logger.error(
+                    f"Error saat menggunakan model Gemini {model_name}: {exc}"
+                )
+                continue
 
-            # Generate response
-            response = self._generate_content(full_message)
+        fallback_msg = (
+            "Maaf, saya sedang mengalami kendala teknis. "
+            "Silakan coba lagi nanti atau hubungi tim support."
+        )
+        logger.error("Semua model Gemini gagal. Mengembalikan fallback message.")
+        return fallback_msg
 
-            if response.text:
-                logger.info("Gemini response with history generated successfully")
-                return response.text.strip()
-
-            return "Maaf, saya tidak dapat menghasilkan respons saat ini."
-
-        except Exception as e:
-            logger.error(f"Error in generate_response_with_history: {str(e)}")
-            return "Terjadi kesalahan saat memproses permintaan Anda."
+    async def generate_response(self, user_message: str, chat_history: List[dict] | None = None) -> str:
+        if chat_history is None:
+            chat_history = []
+        return await self.generate_response_with_history(user_message, chat_history)
 
 
-# Inisialisasi singleton instance
 gemini_service = GeminiService()
