@@ -1,171 +1,354 @@
-# Karpathy-Inspired Claude Code Guidelines
+# Gemini WhatsApp Bot 🤖
 
-> Check out my new project [Multica](https://github.com/multica-ai/multica) — an open-source platform for running and managing coding agents with reusable skills.
->
-> Follow me on X: [https://x.com/jiayuan_jy](https://x.com/jiayuan_jy)
+Bot WhatsApp berbasis AI menggunakan Google Gemini API dengan memory percakapan yang disimpan di PostgreSQL.
 
-A single `CLAUDE.md` file to improve Claude Code behavior, derived from [Andrej Karpathy's observations](https://x.com/karpathy/status/2015883857489522876) on LLM coding pitfalls.
+## 🎯 Fitur Utama
 
-English | [简体中文](./README.zh.md)
+- ✅ **AI-Powered Responses**: Menggunakan Google Gemini 2.0 Flash untuk generate respons yang cerdas dan natural
+- ✅ **Chat History Memory**: Menyimpan riwayat percakapan untuk memberikan konteks yang lebih baik
+- ✅ **Real-time Processing**: Memproses pesan masuk secara real-time menggunakan FastAPI webhook
+- ✅ **User Management**: Menyimpan data pengguna dan riwayat percakapan
+- ✅ **Error Handling**: Penanganan error yang baik dengan logging lengkap
 
-## The Problems
+## 📋 Requirement
 
-From Andrej's post:
+- **Python 3.10+**
+- **PostgreSQL 12+** (database)
+- **Google Gemini API Key** (dari [console.cloud.google.com](https://console.cloud.google.com))
+- **WhatsApp Business Account** dengan akses ke Cloud API
+- **Meta App Credentials** (dari [developers.facebook.com](https://developers.facebook.com))
 
-> "The models make wrong assumptions on your behalf and just run along with them without checking. They don't manage their confusion, don't seek clarifications, don't surface inconsistencies, don't present tradeoffs, don't push back when they should."
+## 🚀 Setup & Installation
 
-> "They really like to overcomplicate code and APIs, bloat abstractions, don't clean up dead code... implement a bloated construction over 1000 lines when 100 would do."
-
-> "They still sometimes change/remove comments and code they don't sufficiently understand as side effects, even if orthogonal to the task."
-
-## The Solution
-
-Four principles in one file that directly address these issues:
-
-| Principle | Addresses |
-|-----------|-----------|
-| **Think Before Coding** | Wrong assumptions, hidden confusion, missing tradeoffs |
-| **Simplicity First** | Overcomplication, bloated abstractions |
-| **Surgical Changes** | Orthogonal edits, touching code you shouldn't |
-| **Goal-Driven Execution** | Leverage through tests-first, verifiable success criteria |
-
-## The Four Principles in Detail
-
-### 1. Think Before Coding
-
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
-
-LLMs often pick an interpretation silently and run with it. This principle forces explicit reasoning:
-
-- **State assumptions explicitly** — If uncertain, ask rather than guess
-- **Present multiple interpretations** — Don't pick silently when ambiguity exists
-- **Push back when warranted** — If a simpler approach exists, say so
-- **Stop when confused** — Name what's unclear and ask for clarification
-
-### 2. Simplicity First
-
-**Minimum code that solves the problem. Nothing speculative.**
-
-Combat the tendency toward overengineering:
-
-- No features beyond what was asked
-- No abstractions for single-use code
-- No "flexibility" or "configurability" that wasn't requested
-- No error handling for impossible scenarios
-- If 200 lines could be 50, rewrite it
-
-**The test:** Would a senior engineer say this is overcomplicated? If yes, simplify.
-
-### 3. Surgical Changes
-
-**Touch only what you must. Clean up only your own mess.**
-
-When editing existing code:
-
-- Don't "improve" adjacent code, comments, or formatting
-- Don't refactor things that aren't broken
-- Match existing style, even if you'd do it differently
-- If you notice unrelated dead code, mention it — don't delete it
-
-When your changes create orphans:
-
-- Remove imports/variables/functions that YOUR changes made unused
-- Don't remove pre-existing dead code unless asked
-
-**The test:** Every changed line should trace directly to the user's request.
-
-### 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform imperative tasks into verifiable goals:
-
-| Instead of... | Transform to... |
-|--------------|-----------------|
-| "Add validation" | "Write tests for invalid inputs, then make them pass" |
-| "Fix the bug" | "Write a test that reproduces it, then make it pass" |
-| "Refactor X" | "Ensure tests pass before and after" |
-
-For multi-step tasks, state a brief plan:
-
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
-
-Strong success criteria let the LLM loop independently. Weak criteria ("make it work") require constant clarification.
-
-## Install
-
-**Option A: Claude Code Plugin (recommended)**
-
-From within Claude Code, first add the marketplace:
-```
-/plugin marketplace add forrestchang/andrej-karpathy-skills
-```
-
-Then install the plugin:
-```
-/plugin install andrej-karpathy-skills@karpathy-skills
-```
-
-This installs the guidelines as a Claude Code plugin, making the skill available across all your projects.
-
-**Option B: CLAUDE.md (per-project)**
-
-New project:
+### 1. Clone Repository
 ```bash
-curl -o CLAUDE.md https://raw.githubusercontent.com/forrestchang/andrej-karpathy-skills/main/CLAUDE.md
+cd gemini-wa-bot
 ```
 
-Existing project (append):
+### 2. Buat Virtual Environment
 ```bash
-echo "" >> CLAUDE.md
-curl https://raw.githubusercontent.com/forrestchang/andrej-karpathy-skills/main/CLAUDE.md >> CLAUDE.md
+# Windows
+python -m venv venv
+venv\Scripts\activate
+
+# Linux/Mac
+python3 -m venv venv
+source venv/bin/activate
 ```
 
-## Using with Cursor
-
-This repository includes a committed Cursor project rule ([`.cursor/rules/karpathy-guidelines.mdc`](.cursor/rules/karpathy-guidelines.mdc)) so the same guidelines apply when you open the project in Cursor. See **[CURSOR.md](CURSOR.md)** for setup, using the rule in other projects, and how this relates to Claude Code.
-
-## Key Insight
-
-From Andrej:
-
-> "LLMs are exceptionally good at looping until they meet specific goals... Don't tell it what to do, give it success criteria and watch it go."
-
-The "Goal-Driven Execution" principle captures this: transform imperative instructions into declarative goals with verification loops.
-
-## How to Know It's Working
-
-These guidelines are working if you see:
-
-- **Fewer unnecessary changes in diffs** — Only requested changes appear
-- **Fewer rewrites due to overcomplication** — Code is simple the first time
-- **Clarifying questions come before implementation** — Not after mistakes
-- **Clean, minimal PRs** — No drive-by refactoring or "improvements"
-
-## Customization
-
-These guidelines are designed to be merged with project-specific instructions. Add them to your existing `CLAUDE.md` or create a new one.
-
-For project-specific rules, add sections like:
-
-```markdown
-## Project-Specific Guidelines
-
-- Use TypeScript strict mode
-- All API endpoints must have tests
-- Follow the existing error handling patterns in `src/utils/errors.ts`
+### 3. Install Dependencies
+```bash
+pip install -r requirements.txt
 ```
 
-## Tradeoff Note
+### 4. Setup Database PostgreSQL
 
-These guidelines bias toward **caution over speed**. For trivial tasks (simple typo fixes, obvious one-liners), use judgment — not every change needs the full rigor.
+#### Opsi A: Menggunakan psql CLI
+```bash
+# Koneksi ke PostgreSQL
+psql -U postgres
 
-The goal is reducing costly mistakes on non-trivial work, not slowing down simple tasks.
+# Buat database baru
+CREATE DATABASE gemini_wa_bot_db;
 
-## License
+# Keluar dari psql
+\q
 
-MIT
+# Jalankan schema
+psql -U postgres -d gemini_wa_bot_db -f schema.sql
+```
+
+#### Opsi B: Menggunakan pgAdmin atau Database Management Tool Lainnya
+1. Buat database baru bernama `gemini_wa_bot_db`
+2. Jalankan script `schema.sql` di database tersebut
+
+### 5. Setup Environment Variables
+
+Copy `.env.example` ke `.env` dan isi dengan credential Anda:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env`:
+```env
+# Gemini Configuration
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-2.0-flash
+
+# WhatsApp Cloud API Configuration
+WA_PHONE_NUMBER_ID=your_whatsapp_phone_number_id
+WA_ACCESS_TOKEN=your_whatsapp_system_user_access_token
+WA_VERIFY_TOKEN=your_custom_webhook_verify_token
+
+# PostgreSQL Database Configuration
+DATABASE_URL=postgresql://username:password@localhost:5432/gemini_wa_bot_db
+
+# App Configuration
+PORT=8000
+LOG_LEVEL=INFO
+```
+
+### 6. Dapatkan Credentials
+
+#### Google Gemini API Key
+1. Buka [console.cloud.google.com](https://console.cloud.google.com)
+2. Buat project baru
+3. Enable "Generative Language API"
+4. Buat API key di "Credentials" section
+5. Copy API key ke `.env`
+
+#### WhatsApp Credentials
+1. Buka [developers.facebook.com](https://developers.facebook.com)
+2. Buat app WhatsApp Business
+3. Setup webhook dan dapatkan:
+   - `WA_PHONE_NUMBER_ID`: Phone number ID dari WhatsApp Business Account
+   - `WA_ACCESS_TOKEN`: System User access token dengan permission `whatsapp_business_messaging`
+   - `WA_VERIFY_TOKEN`: Token custom yang Anda set sendiri (untuk verifikasi webhook)
+
+## 🏃 Menjalankan Bot
+
+### Development Mode (dengan auto-reload)
+```bash
+python main.py
+```
+
+atau
+
+```bash
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Bot akan berjalan di `http://localhost:8000`
+
+### Production Mode
+```bash
+uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+```
+
+## 🌐 Setup Webhook WhatsApp
+
+### 1. Menggunakan ngrok untuk Tunnel Lokal (Development)
+
+```bash
+# Download dan install ngrok dari https://ngrok.com/download
+# Jalankan ngrok (di terminal lain)
+ngrok http 8000
+```
+
+Anda akan mendapat URL seperti: `https://xxxx-xx-xxx-xxx-xx.ngrok.io`
+
+### 2. Configure Webhook di Meta Dashboard
+
+1. Buka [developers.facebook.com](https://developers.facebook.com)
+2. Pilih app Anda
+3. Pilih "WhatsApp" → "Configuration"
+4. Di "Webhook URL", masukkan: `https://xxxx-xx-xxx-xxx-xx.ngrok.io/webhook`
+5. Di "Verify Token", masukkan `WA_VERIFY_TOKEN` dari `.env`
+6. Klik "Verify and Save"
+
+### 3. Subscribe ke Message Events
+
+1. Di Meta Dashboard, pilih "Webhook Fields"
+2. Pilih event yang ingin di-subscribe:
+   - `messages` (untuk menerima pesan masuk)
+3. Save
+
+## 📡 API Endpoints
+
+### Health Check
+```http
+GET /health
+```
+
+### WhatsApp Webhook (Verification)
+```http
+GET /webhook?hub.mode=subscribe&hub.challenge=<challenge>&hub.verify_token=<token>
+```
+
+### WhatsApp Webhook (Receive Messages)
+```http
+POST /webhook
+Content-Type: application/json
+
+{
+  "object": "whatsapp_business_account",
+  "entry": [...]
+}
+```
+
+### Testing Endpoints (Development Only)
+
+#### Send Message Manually
+```http
+POST /test/send-message?phone_number=62812345678&message=Hello%20World
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message_id": "wamid.xxx",
+  "phone_number": "62812345678"
+}
+```
+
+#### Get Chat History
+```http
+GET /test/chat-history/62812345678
+```
+
+**Response:**
+```json
+{
+  "phone_number": "62812345678",
+  "message_count": 5,
+  "messages": [
+    {
+      "role": "user",
+      "message": "Halo",
+      "timestamp": "2024-01-15T10:30:00"
+    },
+    {
+      "role": "model",
+      "message": "Halo! Ada yang bisa saya bantu?",
+      "timestamp": "2024-01-15T10:30:05"
+    }
+  ]
+}
+```
+
+## 📊 Database Schema
+
+### Tabel `users`
+Menyimpan data pengguna WhatsApp
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | SERIAL | Primary key |
+| phone_number | VARCHAR(20) | Nomor WhatsApp (unique) |
+| name | VARCHAR(100) | Nama pengguna |
+| created_at | TIMESTAMP | Waktu pembuatan user |
+| updated_at | TIMESTAMP | Waktu update terakhir |
+
+### Tabel `chat_history`
+Menyimpan riwayat percakapan
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | SERIAL | Primary key |
+| phone_number | VARCHAR(20) | Nomor WhatsApp (FK ke users) |
+| role | VARCHAR(10) | 'user' atau 'model' |
+| message | TEXT | Konten pesan |
+| created_at | TIMESTAMP | Waktu pesan dikirim |
+
+## 🏗️ Project Structure
+
+```
+gemini-wa-bot/
+├── main.py                    # FastAPI aplikasi utama
+├── config.py                  # Konfigurasi dari environment variables
+├── database.py                # Database models & SQLAlchemy setup
+├── models.py                  # Pydantic models untuk request/response
+├── schema.sql                 # SQL schema untuk PostgreSQL
+├── requirements.txt           # Python dependencies
+├── .env.example              # Template environment variables
+├── .gitignore                # Git ignore patterns
+├── README.md                 # Dokumentasi ini
+└── services/
+    ├── __init__.py
+    ├── gemini.py             # Integrasi Google Gemini API
+    ├── whatsapp.py           # Integrasi WhatsApp Cloud API
+    └── message_handler.py    # Business logic untuk handle pesan
+```
+
+## 🧪 Testing
+
+### Test Endpoint Health Check
+```bash
+curl http://localhost:8000/health
+```
+
+### Test Send Message
+```bash
+curl -X POST "http://localhost:8000/test/send-message?phone_number=62812345678&message=Halo%20dunia"
+```
+
+### Test Get Chat History
+```bash
+curl http://localhost:8000/test/chat-history/62812345678
+```
+
+### Check Logs
+
+Lihat log real-time di console untuk debugging:
+```
+2024-01-15 10:30:00,123 - main - INFO - Webhook request received: {...}
+2024-01-15 10:30:01,456 - services.gemini - INFO - Gemini response generated successfully
+2024-01-15 10:30:02,789 - services.whatsapp - INFO - Message sent successfully
+```
+
+## 🔐 Security Best Practices
+
+1. **Environment Variables**: Jangan commit `.env` file, gunakan `.env.example` sebagai template
+2. **API Keys**: Simpan semua API keys di environment variables, tidak di code
+3. **HTTPS**: Selalu gunakan HTTPS untuk webhook URL di production
+4. **Token Verification**: Selalu verifikasi webhook token dari WhatsApp
+5. **Input Validation**: Validate semua input dari user
+6. **Rate Limiting**: Pertimbangkan menambahkan rate limiting di production
+7. **Database**: Gunakan prepared statements (SQLAlchemy sudah handle ini)
+
+## 📝 Logging
+
+Bot menggunakan Python logging dengan format:
+```
+%(asctime)s - %(name)s - %(levelname)s - %(message)s
+```
+
+Level logging bisa diset via environment variable `LOG_LEVEL`:
+- `DEBUG`: Informasi detail untuk debugging
+- `INFO`: Informasi umum (default)
+- `WARNING`: Peringatan
+- `ERROR`: Kesalahan
+
+## 🚨 Troubleshooting
+
+### Error: "Invalid verify token"
+- Pastikan `WA_VERIFY_TOKEN` di `.env` sama dengan yang di Meta Dashboard
+- Pastikan Anda melakukan Save setelah mengubah verify token
+
+### Error: "Database connection refused"
+- Pastikan PostgreSQL sedang berjalan
+- Pastikan `DATABASE_URL` di `.env` benar (format: `postgresql://user:password@host:port/database`)
+- Cek username dan password PostgreSQL
+
+### Error: "GEMINI_API_KEY is required"
+- Pastikan `.env` file ada dan berisi `GEMINI_API_KEY`
+- Pastikan API key valid dan aktif di Google Cloud Console
+
+### Bot tidak menerima pesan
+- Cek apakah webhook URL benar di Meta Dashboard
+- Cek apakah webhook ber-status "Active" (green checkmark)
+- Cek logs di console untuk error messages
+- Test webhook dengan endpoint `/test/send-message`
+
+### Pesan terkirim tapi tidak dikonfirmasi
+- Cek apakah WhatsApp number ID benar
+- Cek apakah access token masih valid
+- Verifikasi di dashboard bahwa phone number sudah di-assign ke app
+
+## 🤝 Contributing
+
+Contributions welcome! Silakan buat pull request atau buka issue untuk bugs/features.
+
+## 📄 License
+
+MIT License - Lihat LICENSE file
+
+## 📞 Support
+
+Jika ada masalah atau pertanyaan, buka issue di repository ini.
+
+---
+
+**Made with ❤️ using FastAPI, Google Gemini, dan WhatsApp Cloud API**

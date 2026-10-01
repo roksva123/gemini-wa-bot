@@ -1,0 +1,79 @@
+# ==================================================================================
+# TEST CASES - KUSTOMISASI SESUAI BISNIS ANDA
+# ==================================================================================
+# Gunakan file ini untuk mendefinisikan test case yang ingin Anda jalankan
+# Setiap test case akan dijalankan dan hasilnya ditampilkan dalam laporan demo
+
+business_info:
+  jam_kerja: "09:00 - 17:00 (Senin - Jumat)"
+  alamat: "Jl. Merdeka No. 123, Jakarta"
+  cara_pesan: "Silakan hubungi admin atau reply dengan daftar produk yang ingin dipesan"
+  nomor_admin: "628123456789"
+  katalog:
+    - nama: "iPhone 15 Pro"
+      harga: "Rp 15.000.000"
+    - nama: "Samsung Galaxy S24"
+      harga: "Rp 12.000.000"
+    - nama: "MacBook Pro M3"
+      harga: "Rp 18.000.000"
+
+test_cases:
+  - step: 1
+    category: "Uji Informasi Umum"
+    pertanyaan: "Jam kerja?"
+    jawaban_diharapkan_pattern: "Jam Operasional|jam kerja|operasional"
+    deskripsi: "Bot harus memberikan informasi jam kerja bisnis"
+
+  - step: 2
+    category: "Uji Informasi Umum"
+    pertanyaan: "Alamat toko di mana?"
+    jawaban_diharapkan_pattern: "alamat|lokasi|Jl\\.|No\\."
+    deskripsi: "Bot harus memberikan informasi lokasi/alamat toko"
+
+  - step: 3
+    category: "Uji Alur Transaksi"
+    pertanyaan: "Bagaimana cara order?"
+    jawaban_diharapkan_pattern: "pesan|order|hubungi|admin"
+    deskripsi: "Bot harus menjelaskan alur pemesanan"
+
+  - step: 4
+    category: "Uji Knowledge Base"
+    pertanyaan: "Berapa harga iPhone 15 Pro?"
+    jawaban_diharapkan_pattern: "15.000.000|Rp|harga"
+    deskripsi: "Bot harus memberikan harga produk dari katalog"
+
+  - step: 5
+    category: "Uji Knowledge Base"
+    pertanyaan: "Berapa harga Samsung Galaxy S24?"
+    jawaban_diharapkan_pattern: "12.000.000|Rp|harga"
+    deskripsi: "Bot harus memberikan harga produk dari katalog"
+
+  - step: 6
+    category: "Uji Batasan Pengetahuan"
+    pertanyaan: "Bisa benerin HP rusak?"
+    jawaban_diharapkan_pattern: "tidak tahu|tidak memiliki informasi|silakan hubungi|admin|maaf"
+    deskripsi: "Bot harus menolak pertanyaan yang out of scope dengan sopan"
+
+  - step: 7
+    category: "Uji Batasan Pengetahuan"
+    pertanyaan: "Apa resep nasi goreng yang enak?"
+    jawaban_diharapkan_pattern: "tidak tahu|tidak memiliki informasi|silakan hubungi|admin|maaf"
+    deskripsi: "Bot harus menolak pertanyaan yang tidak relevan"
+
+  - step: 8
+    category: "Uji Informasi Umum"
+    pertanyaan: "Buka hari ini?"
+    jawaban_diharapkan_pattern: "jam|buka|operasional|kerja"
+    deskripsi: "Bot harus merespons pertanyaan jam buka"
+
+  - step: 9
+    category: "Uji Alur Transaksi"
+    pertanyaan: "Mau beli 2 iPhone 15 Pro, bagaimana caranya?"
+    jawaban_diharapkan_pattern: "pemesanan|order|hubungi|proses|transfer"
+    deskripsi: "Bot harus handle transaksi multi-produk"
+
+  - step: 10
+    category: "Uji Knowledge Base"
+    pertanyaan: "Produk apa saja yang tersedia?"
+    jawaban_diharapkan_pattern: "iPhone|Samsung|MacBook|produk"
+    deskripsi: "Bot harus daftar produk yang ada"

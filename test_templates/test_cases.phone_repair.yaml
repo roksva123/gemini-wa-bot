@@ -1,0 +1,176 @@
+# ==================================================================================
+# TEMPLATE: Test Cases untuk Toko Reparasi HP (Phone Repair Shop)
+# ==================================================================================
+# Gunakan file ini sebagai template untuk toko reparasi/servis HP
+# Copy ke ../test_cases.yaml dan customize dengan data bisnis Anda
+
+business_info:
+  jam_kerja: "10:00 - 18:00 (Senin - Minggu)"
+  alamat: "Jl. Ahmad Yani No. 45, Bandung"
+  cara_pesan: "Datang langsung ke toko atau hubungi admin untuk konsultasi"
+  nomor_admin: "628123456789"
+  jenis_reparasi:
+    - nama: "Ganti Layar"
+      harga: "Rp 500.000 - Rp 1.500.000"
+      waktu: "1-2 jam"
+    - nama: "Ganti Baterai"
+      harga: "Rp 200.000 - Rp 600.000"
+      waktu: "30 menit"
+    - nama: "Servis Motherboard"
+      harga: "Rp 800.000 - Rp 2.000.000"
+      waktu: "1-3 hari"
+    - nama: "Ganti Port Charging"
+      harga: "Rp 300.000 - Rp 800.000"
+      waktu: "1 jam"
+    - nama: "Perbaikan Speaker"
+      harga: "Rp 150.000 - Rp 400.000"
+      waktu: "1-2 jam"
+
+test_cases:
+  # ───────────────────────────────────────────────────────────
+  # KATEGORI 1: Informasi Umum (Jam, Alamat, Kontak)
+  # ───────────────────────────────────────────────────────────
+
+  - step: 1
+    category: "Informasi Umum"
+    pertanyaan: "Jam kerja?"
+    jawaban_diharapkan_pattern: "jam|buka|operasional|tutup|kerja|10:00|18:00"
+    deskripsi: "Bot harus memberikan jam operasional toko"
+
+  - step: 2
+    category: "Informasi Umum"
+    pertanyaan: "Buka hari Minggu?"
+    jawaban_diharapkan_pattern: "buka|minggu|jam|operasional|tutup"
+    deskripsi: "Bot harus menjawab pertanyaan tentang hari buka"
+
+  - step: 3
+    category: "Informasi Umum"
+    pertanyaan: "Alamat toko di mana?"
+    jawaban_diharapkan_pattern: "alamat|lokasi|jl|no|bandung|ahmad|yani"
+    deskripsi: "Bot harus memberikan informasi lokasi toko"
+
+  - step: 4
+    category: "Informasi Umum"
+    pertanyaan: "Nomor telepon yang bisa dihubungi?"
+    jawaban_diharapkan_pattern: "telepon|hubungi|nomor|62|wa|whatsapp|admin"
+    deskripsi: "Bot harus memberikan nomor kontak yang bisa dihubungi"
+
+  # ───────────────────────────────────────────────────────────
+  # KATEGORI 2: Layanan & Harga
+  # ───────────────────────────────────────────────────────────
+
+  - step: 5
+    category: "Layanan & Harga"
+    pertanyaan: "Berapa harga ganti layar HP?"
+    jawaban_diharapkan_pattern: "layar|harga|rp|500|juta|ribu"
+    deskripsi: "Bot harus memberikan harga untuk layanan ganti layar"
+
+  - step: 6
+    category: "Layanan & Harga"
+    pertanyaan: "Berapa harga ganti baterai?"
+    jawaban_diharapkan_pattern: "baterai|harga|rp|200|600|ribu"
+    deskripsi: "Bot harus memberikan harga ganti baterai"
+
+  - step: 7
+    category: "Layanan & Harga"
+    pertanyaan: "Ada layanan perbaikan port charging?"
+    jawaban_diharapkan_pattern: "port|charging|ada|layanan|perbaikan|rp|300|800"
+    deskripsi: "Bot harus konfirmasi ketersediaan layanan dan berikan harga"
+
+  - step: 8
+    category: "Layanan & Harga"
+    pertanyaan: "Layanan apa saja yang tersedia?"
+    jawaban_diharapkan_pattern: "layanan|ganti|servis|perbaikan|layar|baterai|speaker|port"
+    deskripsi: "Bot harus list semua layanan yang ditawarkan"
+
+  # ───────────────────────────────────────────────────────────
+  # KATEGORI 3: Durasi Perbaikan
+  # ───────────────────────────────────────────────────────────
+
+  - step: 9
+    category: "Durasi & Timeline"
+    pertanyaan: "Berapa lama perbaikan layar?"
+    jawaban_diharapkan_pattern: "jam|lama|durasi|1|2|menit|hari|waktu"
+    deskripsi: "Bot harus memberikan estimasi waktu perbaikan layar"
+
+  - step: 10
+    category: "Durasi & Timeline"
+    pertanyaan: "Cepat tidak proses perbaikan?"
+    jawaban_diharapkan_pattern: "jam|cepat|durasi|menit|lama|tergantung|estimasi"
+    deskripsi: "Bot harus menjelaskan durasi perbaikan secara umum"
+
+  # ───────────────────────────────────────────────────────────
+  # KATEGORI 4: Alur Pemesanan/Reparasi
+  # ───────────────────────────────────────────────────────────
+
+  - step: 11
+    category: "Alur Reparasi"
+    pertanyaan: "Bagaimana cara memperbaiki HP saya?"
+    jawaban_diharapkan_pattern: "datang|toko|hubungi|konsultasi|bawa|proses"
+    deskripsi: "Bot harus menjelaskan alur proses reparasi"
+
+  - step: 12
+    category: "Alur Reparasi"
+    pertanyaan: "Bisa reparasi remote atau harus datang?"
+    jawaban_diharapkan_pattern: "datang|toko|langsung|offline|tidak|remote"
+    deskripsi: "Bot harus jelaskan bahwa harus datang ke toko"
+
+  - step: 13
+    category: "Alur Reparasi"
+    pertanyaan: "Mau ganti layar, apa harus bawa HP sekarang?"
+    jawaban_diharapkan_pattern: "bawa|datang|bisa|perlu|hp|jam|terdekat"
+    deskripsi: "Bot harus confirm proses dan local pickup"
+
+  # ───────────────────────────────────────────────────────────
+  # KATEGORI 5: Garansi & Kebijakan
+  # ───────────────────────────────────────────────────────────
+
+  - step: 14
+    category: "Kebijakan & Garansi"
+    pertanyaan: "Ada garansi untuk perbaikan?"
+    jawaban_diharapkan_pattern: "garansi|ada|jaminan|kualitas|harapan|hubungi"
+    deskripsi: "Bot harus menjelaskan kebijakan garansi perbaikan"
+
+  - step: 15
+    category: "Kebijakan & Garansi"
+    pertanyaan: "Apakah data saya aman?"
+    jawaban_diharapkan_pattern: "aman|data|privasi|terjamin|kami|kepercayaan|hubungi"
+    deskripsi: "Bot harus reassure tentang keamanan data customer"
+
+  # ───────────────────────────────────────────────────────────
+  # KATEGORI 6: Out of Scope / Batasan
+  # ───────────────────────────────────────────────────────────
+
+  - step: 16
+    category: "Batasan Pengetahuan"
+    pertanyaan: "Bisa jual HP second bekas?"
+    jawaban_diharapkan_pattern: "tidak|tidak tahu|maaf|silakan|hubungi|admin|info"
+    deskripsi: "Bot harus tolak pertanyaan yang out of scope dengan sopan"
+
+  - step: 17
+    category: "Batasan Pengetahuan"
+    pertanyaan: "Apa resep kare ayam yang enak?"
+    jawaban_diharapkan_pattern: "tidak|maaf|info|silakan|hubungi|bantuan|layanan"
+    deskripsi: "Bot harus reject pertanyaan yang sama sekali tidak relevan"
+
+  - step: 18
+    category: "Batasan Pengetahuan"
+    pertanyaan: "Bisa ganti OS dari Android ke iOS?"
+    jawaban_diharapkan_pattern: "tidak|maaf|bisa|tidak bisa|tidak memungkinkan|silakan|hubungi"
+    deskripsi: "Bot harus explain yang tidak bisa dilakukan"
+
+  # ───────────────────────────────────────────────────────────
+  # KATEGORI 7: Complex Queries
+  # ───────────────────────────────────────────────────────────
+
+  - step: 19
+    category: "Query Kompleks"
+    pertanyaan: "HP saya layarnya pecah dan baterainya cepat habis, berapa total biayanya?"
+    jawaban_diharapkan_pattern: "layar|baterai|harga|rp|total|datang|konsultasi"
+    deskripsi: "Bot harus handle multiple issues dan estimate total cost"
+
+  - step: 20
+    category: "Query Kompleks"
+    pertanyaan: "Saya mau datang besok jam 3 sore untuk ganti layar, bisa tidak?"
+    jawaban_diharapkan_pattern: "jam|bisa|buka|datang|layar|3|sore|saat itu"
+    deskripsi: "Bot harus confirm ketersediaan jam tertentu"

@@ -1,0 +1,33 @@
+whatsapp:
+  # -----------------------------------------------------------------
+  # 1️⃣ URL endpoint API WhatsApp Business (Meta)
+  # -----------------------------------------------------------------
+  # Format:
+  #   https://graph.facebook.com/v19.0/<PHONE_NUMBER_ID>/messages
+  # Ganti <PHONE_NUMBER_ID> dengan ID nomor telepon yang
+  # ditampilkan di “WhatsApp > Phone Numbers” pada dashboard.
+  api_url: https://graph.facebook.com/v19.0/<PHONE_NUMBER_ID>/messages
+
+  # -----------------------------------------------------------------
+  # 2️⃣ Token akses halaman (Page Access Token)
+  # -----------------------------------------------------------------
+  # Token ini bersifat **permanent** (bukan temporary) dan dapat
+  # dibuat di “WhatsApp > Settings > Access Tokens”.
+  token: <YOUR_WHATSAPP_BUSINESS_TOKEN>
+
+  # -----------------------------------------------------------------
+  # 3️⃣ Verify token (token verifikasi)
+  # -----------------------------------------------------------------
+  # String acak yang Anda pilih, misalnya:  my_verify_1234.
+  # Token ini harus sama persis ketika Anda mendaftarkan webhook
+  # (pada langkah 6 di checklist sebelumnya).
+  verify_token: token_rahasia_bebas_123
+
+  # -----------------------------------------------------------------
+  # 4️⃣ URL publik yang Meta akan panggil (ngrok)
+  # -----------------------------------------------------------------
+  # Setelah menjalankan `ngrok http 5000` Anda akan melihat
+  # sesuatu seperti:
+  #   Forwarding https://abcd1234.ngrok.io -> http://localhost:5000
+  # Tambahkan “/webhook” di belakangnya.
+  webhook_url:  https://target-trickster-pretty.ngrok-free.dev/webhook

@@ -1,0 +1,289 @@
+{
+  "info": {
+    "_postman_id": "0c9bf5d6-4a6e-4cbe-a5a2-1f2e9d6a8c3d",
+    "name": "Gemini WA Bot API",
+    "description": "Local API collection for testing all Gemini WA Bot endpoints (FastAPI).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Webhook Verification (GET)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/webhook?hub.mode=subscribe&hub.challenge=123456&hub.verify_token={{WA_VERIFY_TOKEN}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "webhook"
+          ],
+          "query": [
+            {
+              "key": "hub.mode",
+              "value": "subscribe"
+            },
+            {
+              "key": "hub.challenge",
+              "value": "123456"
+            },
+            {
+              "key": "hub.verify_token",
+              "value": "{{WA_VERIFY_TOKEN}}"
+            }
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "Verification success",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/webhook"
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "text/plain"
+            }
+          ],
+          "body": "123456"
+        }
+      ]
+    },
+    {
+      "name": "Webhook Incoming Message (POST)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/webhook",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "webhook"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"object\": \"whatsapp_business_account\",\n  \"entry\": [\n    {\n      \"id\": \"WHATSAPP_BUSINESS_ACCOUNT_ID\",\n      \"changes\": [\n        {\n          \"value\": {\n            \"messaging_product\": \"whatsapp\",\n            \"metadata\": {\n              \"display_phone_number\": \"1234567890\",\n              \"phone_number_id\": \"{{WA_PHONE_NUMBER_ID}}\"\n            },\n            \"contacts\": [\n              {\n                \"profile\": { \"name\": \"John Doe\" },\n                \"wa_id\": \"628123456789\"\n              }\n            ],\n            \"messages\": [\n              {\n                \"from\": \"628123456789\",\n                \"id\": \"ABGGFlA5FA1\",\n                \"timestamp\": \"1700000000\",\n                \"type\": \"text\",\n                \"text\": { \"body\": \"Halo bot!\" }\n              }\n            ]\n          },\n          \"field\": \"messages\"\n        }\n      ]\n    }\n  ]\n}"
+        }
+      },
+      "response": [
+        {
+          "name": "Webhook accepted",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/webhook"
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{ \"status\": \"ok\" }"
+        }
+      ]
+    },
+    {
+      "name": "Test Send Message (POST)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/test/send-message",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "test",
+            "send-message"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone_number\": \"628123456789\",\n  \"message\": \"Ini pesan test dari Postman\"\n}"
+        }
+      },
+      "response": [
+        {
+          "name": "Message sent (dev only)",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/test/send-message"
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"success\": true,\n  \"message_id\": \"wamid.HBgMMz...\",\n  \"phone_number\": \"628123456789\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Get Chat History (GET)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/test/chat-history/628123456789",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "test",
+            "chat-history",
+            "628123456789"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Custom Response (GET)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/custom-response/628123456789",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "custom-response",
+            "628123456789"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Create/Update Custom Response (POST)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/custom-response",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "custom-response"
+          ]
+        },
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "phone_number",
+              "value": "628123456789",
+              "type": "text"
+            },
+            {
+              "key": "message",
+              "value": "Terima kasih sudah menulis pesan khusus.",
+              "type": "text"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Delete Custom Response (DELETE)",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/custom-response/628123456789",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "custom-response",
+            "628123456789"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "WA_VERIFY_TOKEN",
+      "value": "your_verify_token_here",
+      "type": "string"
+    },
+    {
+      "key": "WA_ACCESS_TOKEN",
+      "value": "your_page_access_token_here",
+      "type": "string"
+    },
+    {
+      "key": "WA_PHONE_NUMBER_ID",
+      "value": "your_phone_number_id_here",
+      "type": "string"
+    }
+  ]
+}

@@ -1,0 +1,184 @@
+# TEMPLATE: Test Cases untuk Toko Online (E-Commerce)
+
+business_info:
+  jam_kerja: "24/7 (Online, respon cepat di jam kerja 09:00-17:00)"
+  alamat: "Online - Pengiriman ke seluruh Indonesia"
+  cara_pesan: "Order via WhatsApp atau checkout di website"
+  nomor_admin: "628123456789"
+  website: "https://www.toko-online.com"
+  metode_pembayaran:
+    - "Transfer Bank (BCA, Mandiri, BNI, BTN)"
+    - "E-Wallet (GCash, OVO, DANA, LinkAja)"
+    - "Cicilan 0% (dengan syarat)"
+  ongkos_kirim:
+    - "Jabodetabek: Rp 20.000 - Rp 50.000"
+    - "Pulau Jawa: Rp 50.000 - Rp 150.000"
+    - "Luar Jawa: Rp 150.000 - Rp 500.000"
+    - "Gratis ongkir untuk pembelian > Rp 500.000"
+  populer_products:
+    - "Smartphone Brand A - Rp 5.000.000"
+    - "Smartphone Brand B - Rp 6.000.000"
+    - "Smart Watch - Rp 1.500.000"
+    - "Powerbank 20000mAh - Rp 300.000"
+    - "Wireless Earbuds - Rp 800.000"
+
+test_cases:
+  # ───────────────────────────────────────────────────────────
+  # KATEGORI 1: Informasi Toko
+  # ───────────────────────────────────────────────────────────
+
+  - step: 1
+    category: "Informasi Toko"
+    pertanyaan: "Toko online? Bisa dipercaya?"
+    jawaban_diharapkan_pattern: "online|terpercaya|resmi|penjual|toko|lapak"
+    deskripsi: "Bot harus reassure bahwa toko resmi dan terpercaya"
+
+  - step: 2
+    category: "Informasi Toko"
+    pertanyaan: "Jam kerja berapa?"
+    jawaban_diharapkan_pattern: "24|7|jam|kerja|respon|09:00|17:00|online"
+    deskripsi: "Bot harus memberikan info jam operasional"
+
+  - step: 3
+    category: "Informasi Toko"
+    pertanyaan: "Ada website?"
+    jawaban_diharapkan_pattern: "website|url|https|www|toko"
+    deskripsi: "Bot harus provide website atau platform lain"
+
+  # ───────────────────────────────────────────────────────────
+  # KATEGORI 2: Produk & Harga
+  # ───────────────────────────────────────────────────────────
+
+  - step: 4
+    category: "Produk & Harga"
+    pertanyaan: "Produk apa saja yang tersedia?"
+    jawaban_diharapkan_pattern: "produk|smartphone|brand|powerbank|earbuds|kategori"
+    deskripsi: "Bot harus list kategori/produk utama"
+
+  - step: 5
+    category: "Produk & Harga"
+    pertanyaan: "Berapa harga smartphone Brand A?"
+    jawaban_diharapkan_pattern: "5.000.000|rp|harga|brand|smartphone"
+    deskripsi: "Bot harus memberikan harga produk spesifik"
+
+  - step: 6
+    category: "Produk & Harga"
+    pertanyaan: "Ada diskon atau promo?"
+    jawaban_diharapkan_pattern: "diskon|promo|potongan|spesial|hemat|cashback"
+    deskripsi: "Bot harus inform tentang promo/diskon yang tersedia"
+
+  - step: 7
+    category: "Produk & Harga"
+    pertanyaan: "Tersedia berapa warna? Apa saja?"
+    jawaban_diharapkan_pattern: "warna|tersedia|pilihan|varian|hitam|putih"
+    deskripsi: "Bot harus jelaskan varian warna yang ada"
+
+  # ───────────────────────────────────────────────────────────
+  # KATEGORI 3: Pengiriman & Ongkos Kirim
+  # ───────────────────────────────────────────────────────────
+
+  - step: 8
+    category: "Pengiriman"
+    pertanyaan: "Bisa dikirim ke kota saya?"
+    jawaban_diharapkan_pattern: "kirim|seluruh|indonesia|jawa|sumatera|bali"
+    deskripsi: "Bot harus confirm pengiriman ke seluruh Indo"
+
+  - step: 9
+    category: "Pengiriman"
+    pertanyaan: "Berapa ongkos kirim ke Jakarta?"
+    jawaban_diharapkan_pattern: "ongkos|kirim|jakarta|rp|20|50|gratis"
+    deskripsi: "Bot harus memberikan estimasi ongkir"
+
+  - step: 10
+    category: "Pengiriman"
+    pertanyaan: "Berapa lama sampai?"
+    jawaban_diharapkan_pattern: "hari|lama|sampai|tiba|estimasi|cepat|2|3"
+    deskripsi: "Bot harus memberikan estimasi waktu pengiriman"
+
+  - step: 11
+    category: "Pengiriman"
+    pertanyaan: "Ada gratis ongkir untuk berapa rupiah?"
+    jawaban_diharapkan_pattern: "gratis|500.000|minimal|pembelian|syarat"
+    deskripsi: "Bot harus info tentang free shipping threshold"
+
+  # ───────────────────────────────────────────────────────────
+  # KATEGORI 4: Pembayaran
+  # ───────────────────────────────────────────────────────────
+
+  - step: 12
+    category: "Pembayaran"
+    pertanyaan: "Metode pembayaran apa saja?"
+    jawaban_diharapkan_pattern: "pembayaran|transfer|bank|e-wallet|cicilan|ovo|dana"
+    deskripsi: "Bot harus list semua metode pembayaran yang tersedia"
+
+  - step: 13
+    category: "Pembayaran"
+    pertanyaan: "Bisa cicilan?"
+    jawaban_diharapkan_pattern: "cicilan|bisa|ada|0%|tanggungan|persyaratan"
+    deskripsi: "Bot harus explain cicilan dan syaratnya"
+
+  - step: 14
+    category: "Pembayaran"
+    pertanyaan: "Aman tidak transfer bank?"
+    jawaban_diharapkan_pattern: "aman|kami|terpercaya|resmi|rahasia|data"
+    deskripsi: "Bot harus reassure keamanan transaksi"
+
+  # ───────────────────────────────────────────────────────────
+  # KATEGORI 5: Alur Pembelian
+  # ───────────────────────────────────────────────────────────
+
+  - step: 15
+    category: "Alur Pembelian"
+    pertanyaan: "Bagaimana cara order?"
+    jawaban_diharapkan_pattern: "pesan|order|wa|whatsapp|hubungi|cara|proses"
+    deskripsi: "Bot harus jelaskan step-by-step cara order"
+
+  - step: 16
+    category: "Alur Pembelian"
+    pertanyaan: "Saya mau beli 2 smartwatch dan 1 powerbank, bisa?"
+    jawaban_diharapkan_pattern: "bisa|boleh|smartwatch|powerbank|pesanan|total"
+    deskripsi: "Bot harus handle multiple items order"
+
+  - step: 17
+    category: "Alur Pembelian"
+    pertanyaan: "Sudah order, kapan dikonfirmasi?"
+    jawaban_diharapkan_pattern: "konfirmasi|jam|menit|respon|verifikasi|transfer"
+    deskripsi: "Bot harus explain konfirmasi timeline"
+
+  # ───────────────────────────────────────────────────────────
+  # KATEGORI 6: Kebijakan & Garansi
+  # ───────────────────────────────────────────────────────────
+
+  - step: 18
+    category: "Kebijakan"
+    pertanyaan: "Bisa retur barang?"
+    jawaban_diharapkan_pattern: "retur|bisa|garansi|syarat|rusak|cacat"
+    deskripsi: "Bot harus explain kebijakan retur"
+
+  - step: 19
+    category: "Kebijakan"
+    pertanyaan: "Paket asli kan?"
+    jawaban_diharapkan_pattern: "asli|original|resmi|garansi|tidak|palsu|lokal"
+    deskripsi: "Bot harus assure barang original/asli"
+
+  - step: 20
+    category: "Kebijakan"
+    pertanyaan: "Ada garansi resmi?"
+    jawaban_diharapkan_pattern: "garansi|resmi|brand|tahun|bulan|jaminan"
+    deskripsi: "Bot harus jelaskan jaminan/garansi yang ada"
+
+  # ───────────────────────────────────────────────────────────
+  # KATEGORI 7: Batasan Pengetahuan
+  # ───────────────────────────────────────────────────────────
+
+  - step: 21
+    category: "Batasan Pengetahuan"
+    pertanyaan: "Bisa ganti screen protector gratis?"
+    jawaban_diharapkan_pattern: "tidak|tidak tahu|tidak tersedia|maaf|silakan|hubungi"
+    deskripsi: "Bot harus reject layanan yang tidak tersedia"
+
+  - step: 22
+    category: "Batasan Pengetahuan"
+    pertanyaan: "Apa resep membuat nasi kuning?"
+    jawaban_diharapkan_pattern: "tidak|maaf|tahu|tidak bisa|topik|silakan"
+    deskripsi: "Bot harus reject pertanyaan completely off-topic"
