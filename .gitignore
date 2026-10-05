@@ -70,3 +70,22 @@ poetry.lock
 
 # Uvicorn
 .uvicorn/
+
+# Demo & Development Tools
+ngrok.exe
+ngrok.zip
+quick_demo.sh
+quick_demo.bat
+demo_test_runner.py
+quickstart.py
+run.sh
+run.ps1
+requirements_demo.txt
+
+# Alembic
+alembic/versions/
+*.db-journal
+
+# Environment-specific
+.env.local
+.env.production

@@ -1,56 +1,40 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey, func
-from sqlalchemy.ext.declarative import declarative_base
+"""
+Database configuration dan management dengan SQLAlchemy dan Alembic
+Mendukung SQLite (dev) dan PostgreSQL (production)
+"""
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
-from datetime import datetime
+from sqlalchemy.pool import StaticPool
 from config import settings
+from models import Base
 
-# Create database engine
-engine = create_engine(settings.database_url, echo=False)
+# Create engine dengan dialect-specific options
+if settings.database_url.startswith("sqlite"):
+    # SQLite: gunakan StaticPool untuk threading
+    engine = create_engine(
+        settings.database_url,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+        echo=False
+    )
+    # Enable foreign keys di SQLite
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_conn, connection_record):
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+else:
+    # PostgreSQL atau database lainnya
+    engine = create_engine(settings.database_url, echo=False, pool_pre_ping=True)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Base class untuk semua models
-Base = declarative_base()
-
-
-class User(Base):
-    """Model untuk menyimpan data pengguna WhatsApp"""
-    __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True, index=True)
-    phone_number = Column(String(20), unique=True, index=True, nullable=False)
-    name = Column(String(100), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
-
-
-class ChatHistory(Base):
-    """Model untuk menyimpan riwayat percakapan"""
-    __tablename__ = "chat_history"
-
-    id = Column(Integer, primary_key=True, index=True)
-    phone_number = Column(String(20), ForeignKey("users.phone_number", ondelete="CASCADE"), nullable=False, index=True)
-    role = Column(String(10), nullable=False)  # 'user' atau 'model'
-    message = Column(Text, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
-
-
-class CustomResponse(Base):
-    """Model untuk menyimpan custom response per nomor telepon"""
-    __tablename__ = "custom_responses"
-
-    id = Column(Integer, primary_key=True, index=True)
-    phone_number = Column(String(20), unique=True, index=True, nullable=False)
-    message = Column(Text, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
 
 def get_db():
-    """Dependency untuk mendapatkan database session, dengan rollback pada error"""
+    """Dependency untuk mendapatkan database session"""
     db = SessionLocal()
     try:
         yield db
-        # Commit if everything went fine (FastAPI will commit in routes if needed)
     except Exception:
         db.rollback()
         raise
@@ -59,16 +43,203 @@ def get_db():
 
 
 def create_tables():
-    """Buat semua tabel di database"""
+    """Buat semua tabel di database (fallback jika Alembic belum di-setup)"""
     Base.metadata.create_all(bind=engine)
 
 
 class DatabaseService:
-    """Service untuk operasi database"""
+    """Service untuk operasi database umum"""
+
+    # =====================================================
+    # Business Management
+    # =====================================================
 
     @staticmethod
-    def get_or_create_user(db: Session, phone_number: str, name: str = None) -> User:
-        """Dapatkan atau buat user baru"""
+    def get_or_create_business(db: Session, whatsapp_number: str, name: str = None):
+        """Dapatkan atau buat bisnis baru dari nomor WhatsApp"""
+        from models import Business
+
+        business = db.query(Business).filter(
+            Business.whatsapp_number == whatsapp_number
+        ).first()
+
+        if not business and name:
+            business = Business(
+                name=name,
+                whatsapp_number=whatsapp_number,
+                is_active=True
+            )
+            db.add(business)
+            db.commit()
+            db.refresh(business)
+
+        return business
+
+    @staticmethod
+    def get_business_by_id(db: Session, business_id: int):
+        """Dapatkan bisnis berdasarkan ID"""
+        from models import Business
+        return db.query(Business).filter(Business.id == business_id).first()
+
+    @staticmethod
+    def get_business_by_whatsapp(db: Session, whatsapp_number: str):
+        """Dapatkan bisnis berdasarkan nomor WhatsApp"""
+        from models import Business
+        return db.query(Business).filter(
+            Business.whatsapp_number == whatsapp_number,
+            Business.is_active == True
+        ).first()
+
+    # =====================================================
+    # Conversation Management
+    # =====================================================
+
+    @staticmethod
+    def get_or_create_conversation(db: Session, business_id: int, customer_phone: str, customer_name: str = None):
+        """Dapatkan atau buat percakapan baru"""
+        from models import Conversation
+
+        conversation = db.query(Conversation).filter(
+            Conversation.business_id == business_id,
+            Conversation.customer_phone == customer_phone
+        ).first()
+
+        if not conversation:
+            conversation = Conversation(
+                business_id=business_id,
+                customer_phone=customer_phone,
+                customer_name=customer_name,
+                handoff=False
+            )
+            db.add(conversation)
+            db.commit()
+            db.refresh(conversation)
+        else:
+            # Update customer_name jika berbeda
+            if customer_name and not conversation.customer_name:
+                conversation.customer_name = customer_name
+                db.commit()
+                db.refresh(conversation)
+
+        return conversation
+
+    @staticmethod
+    def get_conversation_by_id(db: Session, conversation_id: int):
+        """Dapatkan percakapan berdasarkan ID"""
+        from models import Conversation
+        return db.query(Conversation).filter(Conversation.id == conversation_id).first()
+
+    @staticmethod
+    def set_handoff(db: Session, conversation_id: int, handoff: bool):
+        """Set status handoff untuk percakapan"""
+        from models import Conversation
+
+        conversation = db.query(Conversation).filter(
+            Conversation.id == conversation_id
+        ).first()
+
+        if conversation:
+            conversation.handoff = handoff
+            db.commit()
+            db.refresh(conversation)
+
+        return conversation
+
+    # =====================================================
+    # Chat Message Management
+    # =====================================================
+
+    @staticmethod
+    def save_chat_message(db: Session, conversation_id: int, role: str, message: str):
+        """Simpan pesan ke percakapan"""
+        from models import ChatMessage
+
+        chat_msg = ChatMessage(
+            conversation_id=conversation_id,
+            role=role,
+            message=message
+        )
+        db.add(chat_msg)
+        db.commit()
+        db.refresh(chat_msg)
+        return chat_msg
+
+    @staticmethod
+    def get_recent_chat_history(db: Session, conversation_id: int, limit: int = 10):
+        """Dapatkan riwayat percakapan terbaru sebagai list of dicts dengan role dan message"""
+        from models import ChatMessage
+
+        messages = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.conversation_id == conversation_id)
+            .order_by(ChatMessage.created_at.asc())
+            .limit(limit)
+            .all()
+        )
+
+        # Convert ke format untuk LLM: [{"role": "user", "content": "..."}, ...]
+        return [
+            {"role": msg.role, "content": msg.message}
+            for msg in messages
+        ]
+
+    # =====================================================
+    # FAQ Management
+    # =====================================================
+
+    @staticmethod
+    def get_faqs_for_business(db: Session, business_id: int):
+        """Dapatkan semua FAQ untuk bisnis"""
+        from models import FAQ
+
+        return (
+            db.query(FAQ)
+            .filter(FAQ.business_id == business_id)
+            .order_by(FAQ.order, FAQ.id)
+            .all()
+        )
+
+    # =====================================================
+    # Lead Management
+    # =====================================================
+
+    @staticmethod
+    def create_lead(db: Session, business_id: int, customer_name: str, customer_phone: str, need: str = None):
+        """Buat lead baru dari percakapan"""
+        from models import Lead
+
+        lead = Lead(
+            business_id=business_id,
+            customer_name=customer_name,
+            customer_phone=customer_phone,
+            need=need,
+            status="baru"
+        )
+        db.add(lead)
+        db.commit()
+        db.refresh(lead)
+        return lead
+
+    @staticmethod
+    def get_leads_for_business(db: Session, business_id: int, status: str = None):
+        """Dapatkan leads untuk bisnis, dengan filter status optional"""
+        from models import Lead
+
+        query = db.query(Lead).filter(Lead.business_id == business_id)
+        if status:
+            query = query.filter(Lead.status == status)
+
+        return query.order_by(Lead.created_at.desc()).all()
+
+    # =====================================================
+    # Legacy Support (untuk backward compatibility sementara)
+    # =====================================================
+
+    @staticmethod
+    def get_or_create_user(db: Session, phone_number: str, name: str = None):
+        """Legacy: Dapatkan atau buat user (untuk kompatibilitas)"""
+        from models import User
+
         user = db.query(User).filter(User.phone_number == phone_number).first()
         if not user:
             user = User(phone_number=phone_number, name=name)
@@ -78,8 +249,10 @@ class DatabaseService:
         return user
 
     @staticmethod
-    def save_chat_message(db: Session, phone_number: str, role: str, message: str) -> ChatHistory:
-        """Simpan pesan ke chat history"""
+    def save_chat_message_legacy(db: Session, phone_number: str, role: str, message: str):
+        """Legacy: Simpan pesan ke chat history (untuk kompatibilitas)"""
+        from models import ChatHistory
+
         chat = ChatHistory(phone_number=phone_number, role=role, message=message)
         db.add(chat)
         db.commit()
@@ -87,8 +260,10 @@ class DatabaseService:
         return chat
 
     @staticmethod
-    def get_recent_chat_history(db: Session, phone_number: str, limit: int = 10) -> list[ChatHistory]:
-        """Dapatkan riwayat percakapan terbaru"""
+    def get_recent_chat_history_legacy(db: Session, phone_number: str, limit: int = 10):
+        """Legacy: Dapatkan riwayat chat per nomor (untuk kompatibilitas)"""
+        from models import ChatHistory
+
         return (
             db.query(ChatHistory)
             .filter(ChatHistory.phone_number == phone_number)
@@ -98,8 +273,10 @@ class DatabaseService:
         )
 
     @staticmethod
-    def update_user_name(db: Session, phone_number: str, name: str) -> User:
-        """Update nama pengguna"""
+    def update_user_name(db: Session, phone_number: str, name: str):
+        """Legacy: Update nama pengguna"""
+        from models import User
+
         user = db.query(User).filter(User.phone_number == phone_number).first()
         if user:
             user.name = name
@@ -108,14 +285,22 @@ class DatabaseService:
         return user
 
     @staticmethod
-    def get_custom_response(db: Session, phone_number: str) -> CustomResponse:
-        """Dapatkan custom response untuk nomor telepon tertentu"""
-        return db.query(CustomResponse).filter(CustomResponse.phone_number == phone_number).first()
+    def get_custom_response(db: Session, phone_number: str):
+        """Legacy: Dapatkan custom response"""
+        from models import CustomResponse
+
+        return db.query(CustomResponse).filter(
+            CustomResponse.phone_number == phone_number
+        ).first()
 
     @staticmethod
-    def save_or_update_custom_response(db: Session, phone_number: str, message: str) -> CustomResponse:
-        """Simpan atau update custom response"""
-        existing = db.query(CustomResponse).filter(CustomResponse.phone_number == phone_number).first()
+    def save_or_update_custom_response(db: Session, phone_number: str, message: str):
+        """Legacy: Simpan atau update custom response"""
+        from models import CustomResponse
+
+        existing = db.query(CustomResponse).filter(
+            CustomResponse.phone_number == phone_number
+        ).first()
 
         if existing:
             existing.message = message

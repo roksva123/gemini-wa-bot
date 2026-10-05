@@ -1,0 +1,17 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "env": {
+    "NEXT_PUBLIC_API_URL": {
+      "description": "Backend API URL",
+      "required": true
+    }
+  },
+  "regions": ["sfo1"],
+  "functions": {
+    "api/**": {
+      "maxDuration": 30
+    }
+  }
+}

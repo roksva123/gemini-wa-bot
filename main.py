@@ -1,37 +1,16 @@
 import logging
 import json
 from pydantic import BaseModel
-
-# ------------------------------------------------------------------
-# Pydantic model used by the development‑only test endpoint
-# ------------------------------------------------------------------
-class TestMessageRequest(BaseModel):
-    """Schema for the /test/send-message endpoint.
-
-    - ``phone_number``: string, e.g. "628123456789"
-    - ``message``: the text to send via WhatsApp
-    """
-    phone_number: str
-    message: str
-
-from fastapi.responses import JSONResponse
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from config import settings
-from database import get_db, create_tables, DatabaseService
+from database import get_db, create_tables
 from services.whatsapp import whatsapp_service
 from services.message_handler import message_handler
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
-from sqlalchemy.orm import Session
-
-# Development Dependency (placeholder)
-
-def require_development():
-    """Placeholder dependency to allow development-only endpoints.
-    Currently a no-op; can be extended to restrict access in production.
-    """
-    return None
-
+from services.rate_limiter import RateLimitMiddleware
+from routers.admin import router as admin_router
 
 # Konfigurasi Logging
 logging.basicConfig(
@@ -40,35 +19,61 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Pydantic model untuk test endpoint
+class TestMessageRequest(BaseModel):
+    """Schema untuk /test/send-message endpoint"""
+    phone_number: str
+    message: str
+
+
 # Inisialisasi FastAPI App
 app = FastAPI(
     title=settings.app_name,
-    description="Bot WhatsApp berbasis AI Gemini dengan memory percakapan",
-    version="1.0.0",
-    # lifespan omitted – optional; FastAPI will use default lifecycle handling
+    description="Multi-client WhatsApp Bot berbasis AI Gemini",
+    version="2.0.0",
 )
 
+# Setup Rate Limiting Middleware
+app.add_middleware(RateLimitMiddleware)
+
+# Setup CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[settings.frontend_origin, "http://localhost:3000", "http://localhost:8000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include admin router
+app.include_router(admin_router)
 
 
+# =====================================================
 # Health Check Endpoint
+# =====================================================
+
 @app.get("/health", tags=["Health"])
 async def health_check():
     """Endpoint untuk mengecek status aplikasi"""
     return {
         "status": "ok",
         "service": settings.app_name,
-        "version": "1.0.0"
+        "version": "2.0.0"
     }
 
 
+# =====================================================
 # WhatsApp Webhook Endpoints
+# =====================================================
+
 @app.get("/webhook", tags=["Webhook"])
 async def verify_webhook(
     hub_mode: str = Query(None, alias="hub.mode"),
     hub_challenge: str = Query(None, alias="hub.challenge"),
     hub_verify_token: str = Query(None, alias="hub.verify_token"),
 ):
-    """Endpoint untuk verifikasi webhook dari WhatsApp."""
+    """Endpoint untuk verifikasi webhook dari WhatsApp"""
     logger.info("Webhook verification request received")
     safe_token = f"{hub_verify_token[:10]}..." if hub_verify_token else "<missing>"
     logger.info(f"Mode: {hub_mode}, Token: {safe_token}")
@@ -79,7 +84,6 @@ async def verify_webhook(
     # Verifikasi token
     if whatsapp_service.verify_webhook_token(hub_verify_token):
         logger.info("Webhook verified successfully")
-        # PERBAIKAN DI SINI: Kembalikan Response murni berupa text/plain
         return Response(content=str(hub_challenge), media_type="text/plain")
 
     logger.error("Invalid webhook token")
@@ -94,39 +98,23 @@ async def handle_webhook(request: Request, db: Session = Depends(get_db)):
     WhatsApp akan mengirim POST request dengan struktur:
     {
         "object": "whatsapp_business_account",
-        "entry": [
-            {
-                "id": "...",
-                "changes": [
-                    {
-                        "value": {
-                            "messaging_product": "whatsapp",
-                            "metadata": {...},
-                            "contacts": [...],
-                            "messages": [...]
-                        },
-                        "field": "messages"
-                    }
-                ]
-            }
-        ]
+        "entry": [...]
     }
     """
     try:
-        # Parse request body
         body = await request.json()
         logger.info("Webhook request received: %s", json.dumps(body, indent=2))
 
         # Validasi struktur
         if body.get("object") != "whatsapp_business_account":
             logger.warning(f"Invalid object type: {body.get('object')}")
-            return JSONResponse(status_code=200, content={"status": "ok"})
+            return {"status": "ok"}
 
         # Proses setiap entry
         entries = body.get("entry") or []
         if not isinstance(entries, list):
             logger.warning("Invalid entry payload")
-            return JSONResponse(status_code=200, content={"status": "ok"})
+            return {"status": "ok"}
 
         for entry in entries:
             if not isinstance(entry, dict):
@@ -165,6 +153,7 @@ async def handle_webhook(request: Request, db: Session = Depends(get_db)):
                         phone_number = message.get("from")
                         message_id = message.get("id")
                         message_type = message.get("type", "text")
+
                         # Ambil nama pengirim dari contacts
                         sender_name = None
                         if contacts:
@@ -187,6 +176,7 @@ async def handle_webhook(request: Request, db: Session = Depends(get_db)):
                             await whatsapp_service.mark_as_read(message_id)
 
                             # Handle pesan dengan AI
+                            # Business akan di-detect dari nomor WhatsApp di database
                             response = await message_handler.handle_incoming_message(
                                 phone_number=phone_number,
                                 message_text=message_text,
@@ -195,8 +185,7 @@ async def handle_webhook(request: Request, db: Session = Depends(get_db)):
                             )
 
                             if not response:
-                                # Jika ada error, kirim pesan error
-                                await message_handler.send_error_message(phone_number)
+                                logger.warning(f"No response generated for {phone_number}")
                         else:
                             logger.info(f"Skipping non-text message type: {message_type}")
 
@@ -204,39 +193,38 @@ async def handle_webhook(request: Request, db: Session = Depends(get_db)):
                         logger.error(f"Error processing message: {str(e)}", exc_info=True)
                         continue
 
-        # Return 200 OK untuk acknowledge webhook
-        return JSONResponse(status_code=200, content={"status": "ok"})
+        return {"status": "ok"}
 
     except json.JSONDecodeError:
         logger.error("Invalid JSON in request body")
-        return JSONResponse(status_code=400, content={"error": "Invalid JSON"})
+        return {"error": "Invalid JSON"}
     except Exception as e:
         logger.error(f"Error in handle_webhook: {str(e)}", exc_info=True)
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        return {"error": str(e)}
 
 
-# Debug Endpoints (opsional, untuk testing)
-@app.post("/test/send-message", dependencies=[Depends(require_development)])
+# =====================================================
+# Debug Endpoints (development only)
+# =====================================================
+
+@app.post("/test/send-message", tags=["Debug"])
 async def test_send_message(
     request_body: TestMessageRequest,
     db: Session = Depends(get_db)
 ):
     """
-    Endpoint untuk testing pengiriman pesan manual (JSON body).
-
+    Endpoint untuk testing pengiriman pesan manual (JSON body)
     Hanya gunakan untuk development!
     """
-    # Extract data from the Pydantic model
-    phone_number = request_body.phone_number
-    message = request_body.message
     try:
+        phone_number = request_body.phone_number
+        message = request_body.message
+
         logger.info(f"Test: Sending message to {phone_number}: {message}")
 
-        # Pastikan nomor HP valid
         if not phone_number or len(phone_number) < 10:
             raise HTTPException(status_code=400, detail="Invalid phone number")
 
-        # Kirim pesan
         message_id = await whatsapp_service.send_message(phone_number, message)
 
         if message_id:
@@ -258,38 +246,47 @@ async def test_send_message(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/test/chat-history/{phone_number}", tags=["Debug"])
-async def test_get_chat_history(phone_number: str, db: Session = Depends(get_db)):
+@app.get("/test/chat-history/{conversation_id}", tags=["Debug"])
+async def test_get_chat_history(conversation_id: int, db: Session = Depends(get_db)):
     """
-    Endpoint untuk melihat riwayat chat seorang user
-
-    Hanya untuk development!
+    Endpoint untuk melihat riwayat chat dari conversation (untuk development)
     """
     try:
         from database import DatabaseService
+        from models import Conversation, ChatMessage
 
-        history = DatabaseService.get_recent_chat_history(db, phone_number, limit=20)
+        conversation = db.query(Conversation).filter(
+            Conversation.id == conversation_id
+        ).first()
 
-        if not history:
+        if not conversation:
             return {
-                "phone_number": phone_number,
+                "conversation_id": conversation_id,
+                "found": False,
                 "message_count": 0,
                 "messages": []
             }
 
-        messages = [
+        messages = db.query(ChatMessage).filter(
+            ChatMessage.conversation_id == conversation_id
+        ).order_by(ChatMessage.created_at.asc()).all()
+
+        result_messages = [
             {
-                "role": chat.role,
-                "message": chat.message,
-                "timestamp": chat.created_at.isoformat()
+                "role": msg.role,
+                "message": msg.message,
+                "timestamp": msg.created_at.isoformat()
             }
-            for chat in history
+            for msg in messages
         ]
 
         return {
-            "phone_number": phone_number,
-            "message_count": len(messages),
-            "messages": messages
+            "conversation_id": conversation_id,
+            "customer_phone": conversation.customer_phone,
+            "customer_name": conversation.customer_name,
+            "found": True,
+            "message_count": len(result_messages),
+            "messages": result_messages
         }
 
     except Exception as e:
@@ -297,115 +294,25 @@ async def test_get_chat_history(phone_number: str, db: Session = Depends(get_db)
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Custom Response Management Endpoints
-@app.get("/custom-response/{phone_number}", tags=["Custom Response"])
-async def get_custom_response(phone_number: str, db: Session = Depends(get_db)):
-    """
-    Dapatkan custom response untuk nomor telepon tertentu
-    """
+# =====================================================
+# Startup Events
+# =====================================================
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database tables on startup"""
     try:
-        logger.info(f"Getting custom response for {phone_number}")
-
-        custom_response = DatabaseService.get_custom_response(db, phone_number)
-
-        if not custom_response:
-            return {
-                "phone_number": phone_number,
-                "found": False,
-                "message": None
-            }
-
-        return {
-            "phone_number": phone_number,
-            "found": True,
-            "message": custom_response.message,
-            "created_at": custom_response.created_at.isoformat(),
-            "updated_at": custom_response.updated_at.isoformat()
-        }
-
+        logger.info("Creating database tables...")
+        create_tables()
+        logger.info("Database tables created successfully")
     except Exception as e:
-        logger.error(f"Error getting custom response: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error creating tables: {str(e)}")
 
 
-@app.post("/custom-response", tags=["Custom Response"])
-async def create_or_update_custom_response(
-    phone_number: str,
-    message: str,
-    db: Session = Depends(get_db)
-):
-    """
-    Tambah atau update custom response untuk nomor telepon
-
-    Query parameters:
-    - phone_number: Nomor telepon (misal: 62812345678)
-    - message: Custom message yang akan di-append ke AI response
-    """
-    try:
-        logger.info(f"Creating/updating custom response for {phone_number}")
-
-        if not phone_number or len(phone_number) < 10:
-            raise HTTPException(status_code=400, detail="Invalid phone number")
-
-        if not message or len(message.strip()) == 0:
-            raise HTTPException(status_code=400, detail="Message cannot be empty")
-
-        # Simpan atau update custom response
-        custom_response = DatabaseService.save_or_update_custom_response(
-            db, phone_number, message
-        )
-
-        return {
-            "success": True,
-            "phone_number": phone_number,
-            "message": custom_response.message,
-            "created_at": custom_response.created_at.isoformat(),
-            "updated_at": custom_response.updated_at.isoformat()
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error saving custom response: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.delete("/custom-response/{phone_number}", tags=["Custom Response"])
-async def delete_custom_response(phone_number: str, db: Session = Depends(get_db)):
-    """
-    Hapus custom response untuk nomor telepon tertentu
-    """
-    try:
-        logger.info(f"Deleting custom response for {phone_number}")
-
-        from database import CustomResponse
-
-        custom_response = db.query(CustomResponse).filter(
-            CustomResponse.phone_number == phone_number
-        ).first()
-
-        if not custom_response:
-            raise HTTPException(status_code=404, detail="Custom response not found")
-
-        db.delete(custom_response)
-        db.commit()
-
-        logger.info(f"Custom response deleted for {phone_number}")
-
-        return {
-            "success": True,
-            "message": "Custom response deleted successfully",
-            "phone_number": phone_number
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error deleting custom response: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
+# =====================================================
 # Main Entry Point
+# =====================================================
+
 if __name__ == "__main__":
     import uvicorn
 
